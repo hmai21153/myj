@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>myjack😺</title>
+<style>
+body { 
+    font-family: 'Arial', sans-serif; 
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e22ce 100%);
+    color: #fff; 
+    text-align: center;
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+}
+.container { max-width: 900px; margin: 0 auto; }
+h1 { font-size: 48px; text-shadow: 3px 3px 6px rgba(0,0,0,0.5); margin-bottom: 10px; }
+.stats {
+    background: rgba(0,0,0,0.3);
+    padding: 15px;
+    border-radius: 10px;
+    margin: 20px 0;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+}
+.stat-item { font-size: 20px; font-weight: bold; }
+.money { color: #ffd700; font-size: 28px; }
+button { 
+    font-size: 18px; 
+    padding: 12px 30px; 
+    margin: 10px; 
+    background: linear-gradient(145deg, #4ade80, #22c55e);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
+button:hover:not(:disabled) { 
+    transform: translateY(-2px); 
+    box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+}
+button:disabled { 
+    background: #666; 
+    cursor: not-allowed; 
+    opacity: 0.5;
+}
+.bet-button {
+    background: linear-gradient(145deg, #f59e0b, #d97706);
+    padding: 10px 20px;
+    font-size: 16px;
+}
+.hand-area {
+    background: rgba(0,0,0,0.2);
+    padding: 20px;
+    border-radius: 15px;
+    margin: 20px 0;
+    min-height: 150px;
+}
+.card { 
+    display: inline-block; 
+    margin: 5px; 
+    padding: 15px 12px; 
+    background: white;
+    color: #000;
+    border: 3px solid #333; 
+    border-radius: 8px;
+    font-size: 24px;
+    font-weight: bold;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    animation: dealCard 0.3s ease-out;
+    min-width: 45px;
+}
+.card.red { color: #dc2626; }
+@keyframes dealCard {
+    from { transform: translateY(-50px) rotateY(180deg); opacity: 0; }
+    to { transform: translateY(0) rotateY(0); opacity: 1; }
+}
+#result { 
+    font-size: 36px; 
+    margin-top: 20px; 
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    animation: popIn 0.5s ease-out;
+}
+@keyframes popIn {
+    0% { transform: scale(0); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+.bet-section {
+    background: rgba(0,0,0,0.3);
+    padding: 20px;
+    border-radius: 10px;
+    margin: 20px 0;
+}
+.sum { font-size: 24px; font-weight: bold; color: #fbbf24; }
+</style>
+</head>
+<body>
+
+<div class="container">
+<h1>blackjack😸</h1>
+
+<div class="stats">
+    <div class="stat-item">所持金: <span class="money">$<span id="money">1000</span></span></div>
+    <div class="stat-item">ベット額: <span style="color: #60a5fa;">$<span id="current-bet">0</span></span></div>
+    <div class="stat-item">かち！😺: <span style="color: #4ade80;"><span id="wins">0</span></span> / 敗北: <span style="color: #f87171;"><span id="losses">0</span></span></div>
+</div>
+
+<div class="bet-section" id="bet-section">
+    <h3>いくらかけるの？😼</h3>
+    <button class="bet-button" onclick="placeBet(10)">$10</button>
+    <button class="bet-button" onclick="placeBet(50)">$50</button>
+    <button class="bet-button" onclick="placeBet(100)">$100</button>
+    <button class="bet-button" onclick="placeBet(500)">$500</button>
+</div>
+
+<div class="hand-area">
+    <h2>ディーラーの手札</h2>
+    <div id="dealer-hand"></div>
+    <div class="sum">合計: <span id="dealer-sum">?</span></div>
+</div>
+
+<div class="hand-area">
+    <h2>あなたの手札</h2>
+    <div id="player-hand"></div>
+    <div class="sum">合計: <span id="player-sum">0</span></div>
+</div>
+
+<div id="game-buttons" style="display:none;">
+    <button id="hit">ヒット 😼</button>
+    <button id="stand">スタンド 😼</button>
+</div>
+
+<div id="result"></div>
+
+<button id="new-game" style="display:none; background: linear-gradient(145deg, #8b5cf6, #7c3aed);" onclick="resetGame()">さいしょから 🔄</button>
+
+</div>
+
+<script>
+const marks = ['♠','♥','♦','♣'];
+let deck = [];
+let player = [];
+let dealer = [];
+let money = 1000;
+let currentBet = 0;
+let wins = 0;
+let losses = 0;
+let gameActive = false;
+
+function initDeck() {
+    deck = [];
+    for (let m of marks) {
+        for (let v = 1; v <= 13; v++) {
+            deck.push({value: v > 10 ? 10 : v, mark: m, display: v === 1 ? 'A' : v > 10 ? ['J','Q','K'][v-11] : v});
+        }
+    }
+}
+
+function shuffle() {
+    for (let i = deck.length - 1; i > 0; i--) {
+        let j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+}
+
+function sum(hand) {
+    let total = 0, ace = 0;
+    for (let card of hand) {
+        total += card.value;
+        if (card.value === 1) ace++;
+    }
+    while (total <= 11 && ace > 0) {
+        total += 10;
+        ace--;
+    }
+    return total;
+}
+
+function showHands(revealDealer=false) {
+    const playerDiv = document.getElementById("player-hand");
+    const dealerDiv = document.getElementById("dealer-hand");
+    playerDiv.innerHTML = '';
+    dealerDiv.innerHTML = '';
+
+    for (let c of player) {
+        let d = document.createElement("span");
+        d.className = "card";
+        if (c.mark === '♥' || c.mark === '♦') d.className += " red";
+        d.textContent = c.mark + c.display;
+        playerDiv.appendChild(d);
+    }
+    document.getElementById("player-sum").textContent = sum(player);
+
+    for (let i = 0; i < dealer.length; i++) {
+        let d = document.createElement("span");
+        d.className = "card";
+        if (i === 0 && !revealDealer) {
+            d.textContent = "🂠";
+            d.style.background = "linear-gradient(145deg, #3b82f6, #2563eb)";
+            d.style.color = "#fff";
+        } else {
+            if (dealer[i].mark === '♥' || dealer[i].mark === '♦') d.className += " red";
+            d.textContent = dealer[i].mark + dealer[i].display;
+        }
+        dealerDiv.appendChild(d);
+    }
+    document.getElementById("dealer-sum").textContent = revealDealer ? sum(dealer) : "?";
+}
+
+function placeBet(amount) {
+    if (money >= amount) {
+        currentBet = amount;
+        money -= amount;
+        updateStats();
+        startGame();
+    } else {
+        alert("むいちもん😿");
+    }
+}
+
+function updateStats() {
+    document.getElementById("money").textContent = money;
+    document.getElementById("current-bet").textContent = currentBet;
+    document.getElementById("wins").textContent = wins;
+    document.getElementById("losses").textContent = losses;
+}
+
+function endGame() {
+    gameActive = false;
+    while (sum(dealer) < 17) {
+        dealer.push(deck.pop());
+    }
+    showHands(true);
+    const pSum = sum(player);
+    const dSum = sum(dealer);
+    let result = "";
+    let winAmount = 0;
+    
+    if (pSum > 21) {
+        result = "オーバーしちゃった！😿まけ！";
+        losses++;
+    } else if (dSum > 21) {
+        result = "あなたのかち！😺";
+        winAmount = currentBet * 2;
+        wins++;
+    } else if (pSum > dSum) {
+        result = "YOU WIN!!";
+        winAmount = currentBet * 2;
+        wins++;
+    } else if (pSum === dSum) {
+        result = "DRAW - ベット額返却😿";
+        winAmount = currentBet;
+    } else {
+        result = "YOU LOSE...";
+        losses++;
+    }
+    
+    money += winAmount;
+    document.getElementById("result").textContent = result + (winAmount > 0 ? ` (+$${winAmount})` : "");
+    updateStats();
+
+    document.getElementById("hit").disabled = true;
+    document.getElementById("stand").disabled = true;
+    document.getElementById("new-game").style.display = "inline-block";
+    
+    if (money === 0) {
+        setTimeout(() => {
+            alert("あらら😿まいだけにドンマイ！。");
+            money = 1000;
+            wins = 0;
+            losses = 0;
+            updateStats();
+        }, 1000);
+    }
+}
+
+function startGame() {
+    gameActive = true;
+    initDeck();
+    shuffle();
+    player = [deck.pop(), deck.pop()];
+    dealer = [deck.pop(), deck.pop()];
+    showHands();
+
+    document.getElementById("bet-section").style.display = "none";
+    document.getElementById("game-buttons").style.display = "block";
+    document.getElementById("hit").disabled = false;
+    document.getElementById("stand").disabled = false;
+    document.getElementById("result").textContent = "";
+    document.getElementById("new-game").style.display = "none";
+    
+    if (sum(player) === 21) {
+        setTimeout(() => {
+            alert("ブラックジャック！😺");
+            endGame();
+        }, 500);
+    }
+}
+
+function resetGame() {
+    currentBet = 0;
+    document.getElementById("bet-section").style.display = "block";
+    document.getElementById("game-buttons").style.display = "none";
+    document.getElementById("new-game").style.display = "none";
+    document.getElementById("result").textContent = "";
+    document.getElementById("player-hand").innerHTML = "";
+    document.getElementById("dealer-hand").innerHTML = "";
+    document.getElementById("player-sum").textContent = "0";
+    document.getElementById("dealer-sum").textContent = "?";
+    updateStats();
+}
+
+document.getElementById("hit").addEventListener("click", () => {
+    if (!gameActive) return;
+    player.push(deck.pop());
+    showHands();
+    if (sum(player) > 21) {
+        setTimeout(() => endGame(), 500);
+    }
+});
+
+document.getElementById("stand").addEventListener("click", () => {
+    if (!gameActive) return;
+    endGame();
+});
+
+updateStats();
+</script>
+
+</body>
+</html>
